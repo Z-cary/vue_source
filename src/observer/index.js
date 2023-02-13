@@ -1,7 +1,19 @@
+import { newArrayProto } from "./array"
 class Observer {
   constructor(data) {
     // object.defineProperty只能劫持已经存在的属性(vue为此单独写了一些 api $set $delete)
-    this.walk(data);
+    Object.defineProperty(data, '__ob__', {
+      value: this,
+      enumerable: false // 是否可枚举
+    })
+    if(Array.isArray(data)) {
+      // 重写数组的一些方法，可以捕获的用户的push等数组操作
+      // 对数组中复杂数据类型进行劫持
+      data.__proto__ = newArrayProto;
+      this.arrayOberser(data)
+    }else {
+      this.walk(data);
+    }
   }
   /**
    *
@@ -11,6 +23,9 @@ class Observer {
     // '重新定义'属性
     Object.keys(data).forEach((key) => defineReactive(data, key, data[key]));
   }
+  arrayOberser(data) {
+    data.forEach(item => observer(item))
+  }
 }
 /**
  * 进行属性劫持
@@ -19,6 +34,7 @@ class Observer {
  * @param {值} value 
  */
 export function defineReactive(target, key, value) {
+  observer(value)
   Object.defineProperty(target, key, {
     get() {
       return value
